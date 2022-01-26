@@ -7,16 +7,26 @@ using Object = UnityEngine.Object;
 using Random = UnityEngine.Random;
 using System.Transactions;
 
-public enum Dimension
-{
-    X,
-    Y,
-    Z
-}
-
 namespace quiet
 {
-    public struct VectorUtils
+    [Flags]
+    public enum Dimension
+    {
+        X,
+        Y,
+        Z
+    }
+
+    [Flags]
+    public enum CardinalDirections
+    {
+        N,
+        E,
+        S,
+        W,
+    }
+
+    public static class VectorUtils
     {
         #region Square Distance
         /// <summary>
@@ -25,7 +35,7 @@ namespace quiet
         /// <param name="obj1"></param>
         /// <param name="obj2"></param>
         /// <returns>The squared distance between the two GameObjects</returns>
-        public static float CalcSqDistance(GameObject obj1, GameObject obj2) => CalcSqDistance(obj1?.transform.position ?? Vector3.zero, obj2?.transform.position ?? Vector3.zero);
+        public static float CalcSqDistance(GameObject obj1, GameObject obj2) => CalcSqDistance(obj1 == null ? Vector3.zero : obj1.transform.position, obj2 == null ? Vector3.zero : obj2.transform.position);
 
         /// <summary>
         /// Calculates the squared horizontal distance between two vectors
@@ -90,7 +100,7 @@ namespace quiet
         /// <param name="targets">An array of objects to check if they are close to origin</param>
         /// <param name="distance">The radius of the circle to check within</param>
         /// <returns>An array of GameObjects that are within a radius distance from origin</returns>
-        public static IEnumerable<GameObject> FindCloseObjects(GameObject origin, IEnumerable<GameObject> targets, float distance) => targets.Where((target) => CalcSqDistance(origin, target) < distance * distance).ToArray();
+        public static IEnumerable<GameObject> FindCloseObjects(GameObject origin, IEnumerable<GameObject> targets, float distance) => targets.Where(target => CalcSqDistance(origin, target) < distance * distance).ToArray();
 
         /// <summary>
         /// Finds every Vector3 within a radius distance from origin
@@ -99,7 +109,7 @@ namespace quiet
         /// <param name="targets"></param>
         /// <param name="distance"></param>
         /// <returns></returns>
-        public static IEnumerable<Vector3> FindCloseVec3s(Vector3 origin, IEnumerable<Vector3> targets, float distance) => targets.Where((target) => CalcSqDistance(origin, target) < distance * distance).ToArray();
+        public static IEnumerable<Vector3> FindCloseVec3s(Vector3 origin, IEnumerable<Vector3> targets, float distance) => targets.Where(target => CalcSqDistance(origin, target) < distance * distance).ToArray();
 
         public static bool IsCloseVec3(Vector3 origin, Vector3 target, float distance) => CalcSqDistance(origin, target) < distance * distance;
 
@@ -122,11 +132,10 @@ namespace quiet
         /// <returns>A GameObject from within targets that is closest to origin</returns>
         public static GameObject FindClosest(GameObject origin, IEnumerable<GameObject> targets)
         {
-            if (targets == null || !targets.Any())
+            if (targets == null)
                 return null;
 
-            // If origin is in targets, remove it
-            targets = targets.Where((target) => target != origin);
+            targets = from target in targets where target != origin select target;
             // Calculate the distance to each gameobject
             IEnumerable<float> distances = CalcSqDistances(origin, targets);
             // Determine the closest and return it
@@ -148,7 +157,7 @@ namespace quiet
                 return Vector3.zero;
 
             // If origin is in targets, remove it
-            targets = targets.Where((target) => target != origin);
+            targets = from target in targets where target != origin select target;
             // Calculate the distance to each gameobject
             IEnumerable<float> distances = CalcSqDistances(origin, targets);
             // Determine the closest and return it
@@ -195,6 +204,8 @@ namespace quiet
         public static Vector3 GetRandomPoint((float min, float max) X, float Y, (float min, float max) Z) => GetRandomPoint(X.min, X.max, Y, Y, Z.min, Z.max);
 
         public static Vector3 GetRandomPoint_2D((float min, float max) X, (float min, float max) Y) => new Vector3(Random.Range(X.min, X.max), Random.Range(Y.min, Y.max));
+
+        public static Vector2 GetRandomPoint_2D(RangeInt X, RangeInt Y) => new Vector2(Mathf.Floor(Random.Range(X.start, X.end)), Mathf.Floor(Random.Range(Y.start, Y.end)));
         #endregion
 
         #region Average Direction
@@ -217,15 +228,14 @@ namespace quiet
     /// <summary>
     /// A collection of loosely typed global variables
     /// </summary>
-    public struct Variables
+    public static class Variables
     {
         /// <summary>
         /// All variables
         /// </summary>
         public static Dictionary<string, object> variables =
             new Dictionary<string, object>() {
-                { "bounds", new Bounds(new Vector3(50, 0, 50), new Vector3(95, 95, 95)) },
-                { "center", new Vector3(50, 0, 50) }
+                { "DebugToggle", false },
             };
 
         /// <summary>
@@ -298,7 +308,7 @@ namespace quiet
 
         #region Initialize
         /// <summary>
-        /// If an variable doesn't exist with the given name, create one, set it's value to value and return it's value. if it already exists, just return it's value
+        /// If a variable doesn't exist with the given name, create one, set it's value to value and return it's value. if it already exists, just return it's value
         /// </summary>
         /// <param name="name"></param>
         /// <param name="value"></param>
@@ -390,7 +400,7 @@ namespace quiet
     /// <summary>
     /// Methods that involve unity objects and functions
     /// </summary>
-    public struct UnityUtils
+    public static class UnityUtils
     {
         /// <summary>
         /// Spawn a GameObject at a specified position
@@ -427,6 +437,8 @@ namespace quiet
             return masterString;
         }
 
+        public static string Stringify(params object[] objs) => Stringify(objs.AsEnumerable());
+
         /// <summary>
         /// Determines if an object is outside of the bounds
         /// </summary>
@@ -448,7 +460,7 @@ namespace quiet
     /// <summary>
     /// Methods for detecting collisions
     /// </summary>
-    public struct Collision
+    public static class Collision
     {
         #region AABB
         /// <summary>
@@ -491,7 +503,7 @@ namespace quiet
         public static bool BoundingCircle(Vector3 pos1, float rad1, Vector3 pos2, float rad2) => VectorUtils.CalcSqDistance(pos1, pos2) < Mathf.Pow(rad1 + rad2, 2);
         #endregion
     }
-    
+
     /// <summary>
     /// Methods that extend on other classes
     /// </summary>
@@ -505,7 +517,7 @@ namespace quiet
         /// <param name="scalar"></param>
         /// <returns>The scaled vector</returns>
         public static Vector3 Scale(this Vector3 v, float scalar) => v.normalized * scalar;
-        
+
         /// <summary>
         /// Returns the same vector without it's y value
         /// </summary>
@@ -521,23 +533,17 @@ namespace quiet
         /// <param name="v"></param>
         /// <param name="dims"></param>
         /// <returns>A vector with specifed dimensions set to zero</returns>
-        public static Vector3 Strip(this Vector3 v, params Dimension[] dims)
+        public static Vector3 Strip(this Vector3 v, Dimension dims)
         {
-            Stack<Dimension> dimStack = new Stack<Dimension>(dims);
-            while(dimStack.Count > 0)
+            foreach(Dimension d in dims.GetUniqueFlags())
             {
-                switch (dimStack.Pop())
+                v = d switch
                 {
-                    case Dimension.X:
-                        v = new Vector3(0, v.y, v.z);
-                        break;
-                    case Dimension.Y:
-                        v = new Vector3(v.x, 0, v.z);
-                        break;
-                    case Dimension.Z:
-                        v = new Vector3(v.x, v.y, 0);
-                        break;
-                }
+                    Dimension.X => new Vector3(0, v.y, v.z),
+                    Dimension.Y => new Vector3(v.x, 0, v.z),
+                    Dimension.Z => new Vector3(v.x, v.y, 0),
+                    _ => v,
+                };
             }
 
             return v;
@@ -547,60 +553,24 @@ namespace quiet
 
         public static Vector2 StripDim(this Vector3 v, Dimension dim)
         {
-            Vector2 v2;
-            switch (dim)
+            return dim switch
             {
-                case Dimension.X:
-                    v2 = new Vector2(v.y, v.z);
-                    break;
-                case Dimension.Y:
-                    v2 = new Vector2(v.x, v.z);
-                    break;
-                default:
-                    v2 = new Vector2(v.x, v.y);
-                    break;
-            }
-            return v2;
+                Dimension.X => new Vector2(v.y, v.z),
+                Dimension.Y => new Vector2(v.x, v.z),
+                _ => new Vector2(v.x, v.y),
+            };
         }
 
         public static Vector3 FillZDim(this Vector2 v) => new Vector3(v.x, v.y, 0);
 
         public static Vector3 FillDim(this Vector2 v, Dimension dim, float value = 0)
         {
-            Vector3 v2;
-            switch (dim)
+            return dim switch
             {
-                case Dimension.X:
-                    v2 = new Vector3(value, v.x, v.y);
-                    break;
-                case Dimension.Y:
-                    v2 = new Vector3(v.x, value, v.y);
-                    break;
-                default:
-                    v2 = new Vector3(v.x, v.y, value);
-                    break;
-            }
-            return v2;
-        }
-
-        public static Vector2 RemoveZDim(this Vector3 v) => new Vector2(v.x, v.y);
-
-        public static Vector2 RemoveDim(this Vector3 v, Dimension dim)
-        {
-            Vector2 v2;
-            switch (dim)
-            {
-                case Dimension.X:
-                    v2 = new Vector2(v.y, v.z);
-                    break;
-                case Dimension.Y:
-                    v2 = new Vector2(v.x, v.z);
-                    break;
-                default:
-                    v2 = new Vector2(v.x, v.y);
-                    break;
-            }
-            return v2;
+                Dimension.X => new Vector3(value, v.x, v.y),
+                Dimension.Y => new Vector3(v.x, value, v.y),
+                _ => new Vector3(v.x, v.y, value),
+            };
         }
 
         /// <summary>
@@ -618,42 +588,34 @@ namespace quiet
         /// <param name="v2">The vector to reference</param>
         /// <param name="dims">The dimensions to replace</param>
         /// <returns></returns>
-        public static Vector3 Replace(this Vector3 v1, Vector3 v2, params Dimension[] dims)
+        public static Vector3 Replace(this Vector3 v1, Vector3 v2, Dimension dims)
         {
-            Stack<Dimension> dimStack = new Stack<Dimension>(dims);
-            while(dimStack.Count > 0)
+            foreach(Dimension d in dims.GetUniqueFlags())
             {
-                switch (dimStack.Pop())
+                v1 = d switch
                 {
-                    case Dimension.X:
-                        v1 = new Vector3(v2.x, v1.y, v1.z);
-                        break;
-                    case Dimension.Y:
-                        v1 = new Vector3(v1.x, v2.y, v1.z);
-                        break;
-                    case Dimension.Z:
-                        v1 = new Vector3(v1.x, v1.y, v2.z);
-                        break;
-                }
+                    Dimension.X => new Vector3(v2.x, v1.y, v1.z),
+                    Dimension.Y => new Vector3(v1.x, v2.y, v1.z),
+                    Dimension.Z => new Vector3(v1.x, v1.y, v2.z),
+                    _ => v1,
+                };
             }
             return v1;
         }
 
-        public static Vector3 Replace(this Vector3 v1, float value, Dimension dim)
+        public static Vector3 Replace(this Vector3 v, float value, Dimension dim)
         {
-            switch (dim)
+            foreach (Dimension d in dim.GetUniqueFlags())
             {
-                case Dimension.X:
-                    v1 = new Vector3(value, v1.y, v1.z);
-                    break;
-                case Dimension.Y:
-                    v1 = new Vector3(v1.x, value, v1.z);
-                    break;
-                case Dimension.Z:
-                    v1 = new Vector3(v1.x, v1.y, value);
-                    break;
+                v = dim switch
+                {
+                    Dimension.X => new Vector3(value, v.y, v.z),
+                    Dimension.Y => new Vector3(v.x, value, v.z),
+                    Dimension.Z => new Vector3(v.x, v.y, value),
+                    _ => v,
+                };
             }
-            return v1;
+            return v;
         }
 
         /// <summary>
@@ -662,23 +624,17 @@ namespace quiet
         /// <param name="v"></param>
         /// <param name="dims"></param>
         /// <returns></returns>
-        public static Vector3 Reflect(this Vector3 v, params Dimension[] dims)
+        public static Vector3 Reflect(this Vector3 v, Dimension dims)
         {
-            Stack<Dimension> dimStack = new Stack<Dimension>(dims);
-            while(dimStack.Count > 0)
+            foreach (Dimension d in dims.GetUniqueFlags())
             {
-                switch (dimStack.Pop())
+                v = d switch
                 {
-                    case Dimension.X:
-                        v = new Vector3(-v.x, v.y, v.z);
-                        break;
-                    case Dimension.Y:
-                        v = new Vector3(v.x, -v.y, v.z);
-                        break;
-                    case Dimension.Z:
-                        v = new Vector3(v.x, v.y, -v.z);
-                        break;
-                }
+                    Dimension.X => new Vector3(-v.x, v.y, v.z),
+                    Dimension.Y => new Vector3(v.x, -v.y, v.z),
+                    Dimension.Z => new Vector3(v.x, v.y, -v.z),
+                    _ => v,
+                };
             }
 
             return v;
@@ -705,25 +661,204 @@ namespace quiet
             v.y = vy;
             return v;
         }
+
+        // Deconstruct extensions
+        public static void Deconstruct(this Vector3 v, out float x, out float y, out float z) => (x, y, z) = (v.x, v.y, v.z);
+
+        public static void Deconstruct(this Vector3 v, out float x, out float y) => (x, y) = (v.x, v.y);
+
+        public static void Deconstruct(this Vector2 v, out float x, out float y) => (x, y) = (v.x, v.y);
         #endregion
 
         #region LinkedList
         public static LinkedListNode<T> ElementAt<T>(this LinkedList<T> list, int index)
         {
             LinkedListNode<T> currentNode = list.First;
-            for(int i = 0; i < index; i++)
+            for (int i = 0; i < index; i++)
             {
                 currentNode = currentNode.Next ?? throw new IndexOutOfRangeException();
             }
             return currentNode;
         }
         #endregion
+
+        #region List
+        public static T RandomElement<T>(this List<T> list) => list.Count == 0 ? default : list[Mathf.FloorToInt(Random.Range(0, list.Count))];
+        #endregion
+
+        #region Flags
+        public static IEnumerable<T> GetUniqueFlags<T>(this T e)
+            where T : Enum 
+        {
+            foreach (Enum value in Enum.GetValues(typeof(T)))
+            {
+                if (e.HasFlag(value))
+                    yield return (T)value;
+            }
+        }
+        #endregion
+    }
+
+    public static class Collections
+    {
+        public static  T[] Flatten<T>(T[,] arr)
+        {
+            List<T> flattened = new List<T>();
+            foreach(T t in arr)
+            {
+                flattened.Add(t);
+            }
+
+            return flattened.ToArray();
+        }
     }
 
     public static class Math
     {
         public static int Map(int value, int fromLow, int fromHigh, int toLow, int toHigh) => (value - fromLow) * (toHigh - toLow) / (fromHigh - fromLow) + toLow;
         public static float Map(float value, float fromLow, float fromHigh, float toLow, float toHigh) => (value - fromLow) * (toHigh - toLow) / (fromHigh - fromLow) + toLow;
-        public static bool InRange(float value, float min, float max) => !(!(value <= min) || !(value >= max));
+        public static bool InRange(this float value, float min, float max) => value >= min && value <= max;
+        public static bool InRange(this int value, int min, int max) => value >= min && value <= max;
+    }
+
+    public class StateManager<TEnum> where TEnum : struct, Enum
+    {
+        private TEnum currentState;
+
+        private readonly HashSet<TEnum> enumValues = new HashSet<TEnum>((TEnum[])Enum.GetValues(typeof(TEnum)));
+
+        public TEnum State => currentState;
+
+        public StateManager(TEnum startingState)
+        {
+            currentState = startingState;
+        }
+
+        public bool IsValid(TEnum state) => enumValues.Contains(state);
+
+        public void SwapState(TEnum newState)
+        {
+            if (!IsValid(newState)) throw new InvalidCastException($"{newState} is not a valid state of type {typeof(TEnum)}");
+            if (newState.Equals(currentState)) return;
+
+            if(Variables.Get<bool>("DebugToggle"))
+                Debug.Log($"Swapping states from {currentState} to {newState}");
+
+            currentState = newState;
+        }
+    }
+
+    #region Types
+
+    [Serializable]
+    public struct Float01
+    {
+        private readonly float value;
+
+        public Float01(float value)
+        {
+            this.value = Mathf.Clamp01(value);
+        }
+
+        public static Float01 operator +(Float01 a, Float01 b) => new Float01(a.value + b.value);
+        public static Float01 operator +(Float01 a, float b) => new Float01(a.value + b);
+        public static Float01 operator -(Float01 a, Float01 b) => new Float01(a.value - b.value);
+        public static Float01 operator -(Float01 a, float b) => new Float01(a.value - b);
+        public static Float01 operator *(Float01 a, Float01 b) => new Float01(a.value * b.value);
+        public static Float01 operator *(Float01 a, float b) => new Float01(a.value * b);
+        public static Float01 operator /(Float01 a, Float01 b) => new Float01(a.value / b.value);
+        public static Float01 operator /(Float01 a, float b) => new Float01(a.value / b);
+
+        public static implicit operator float(Float01 a) => a.value;
+        public static explicit operator Float01(float a) => new Float01(a);
+
+        public override string ToString() => value.ToString();
+    }
+
+    #endregion
+
+    namespace Timers
+    {
+        public class DoAfter : MonoBehaviour
+        {
+            public float Interval { get; set; }
+            public Action Action { get; set; }
+
+            public float birth = 0;
+
+            public void Start()
+            {
+                birth = Time.time;
+            }
+
+            public void Update()
+            {
+                if (Time.time - birth >= Interval)
+                {
+                    Action.Invoke();
+                    Destroy(gameObject);
+                }
+            }
+
+            public static DoAfter DoAfterFactory(Action action, float interval = 1) => DoAfterFactory(new GameObject(), action, interval);
+
+            public static DoAfter DoAfterFactory(GameObject go, Action action, float interval = 1)
+            {
+                DoAfter da = go.AddComponent<DoAfter>();
+                da.Interval = interval;
+                da.Action = action;
+
+                return da;
+            }
+        }
+
+        public class DoEvery : MonoBehaviour
+        {
+            public float Interval { get; set; }
+            public Action Action { get; set; }
+            public uint Loops;
+            public bool Pause { get; set; }
+            public float Until;
+
+            private float birth = 0;
+            private float start = 0;
+
+            public void Start()
+            {
+                birth = start = Time.time;
+            }
+
+            public void Update()
+            {
+                if (Pause)
+                    return;
+
+                if (Until > 0 && Until <= Time.time) Destroy(gameObject);
+
+                if (Time.time - start >= Interval)
+                {
+                    Action.Invoke();
+                    start = Time.time;
+                }
+
+                Loops = Loops == uint.MaxValue ? 0 : Loops + 1;
+            }
+
+            public static DoEvery DoEveryFactory(Action action, float interval = 1, float until = -1) => DoEveryFactory(new GameObject(), action, interval, until);
+
+            public static DoEvery DoEveryFactory(GameObject go, Action action, float interval = 1, float until = -1)
+            {
+                DoEvery de = go.AddComponent<DoEvery>();
+                de.Interval = interval;
+                de.Action = action;
+                de.Pause = false;
+                if (until > 0)
+                {
+                    de.Until = Time.time + until;
+                }
+
+                return de;
+            }
+        }
     }
 }
