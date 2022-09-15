@@ -699,8 +699,15 @@ namespace quiet
         #endregion
     }
 
+    /// <summary>
+    /// Extensions to collection classes, currently only Arrays
+    /// </summary>
     public static class Collections
     {
+        /// <summary>
+        /// Flatten a generic 2D array into a 1D array
+        /// </summary>
+        /// <returns></returns>
         public static  T[] Flatten<T>(T[,] arr)
         {
             List<T> flattened = new List<T>();
@@ -713,18 +720,44 @@ namespace quiet
         }
     }
 
+    /// <summary>
+    /// Useful methods for manipulating numbers
+    /// </summary>
     public static class Math
     {
+        /// <summary>
+        /// Map a value from one range to another
+        /// </summary>
+        /// <returns></returns>
         public static int Map(int value, int fromLow, int fromHigh, int toLow, int toHigh) => (value - fromLow) * (toHigh - toLow) / (fromHigh - fromLow) + toLow;
+        /// <summary>
+        /// Map a value from one range to another
+        /// </summary>
+        /// <returns></returns>
         public static float Map(float value, float fromLow, float fromHigh, float toLow, float toHigh) => (value - fromLow) * (toHigh - toLow) / (fromHigh - fromLow) + toLow;
+        /// <summary>
+        /// Determine if a value is within a given range
+        /// </summary>
+        /// <returns></returns>
         public static bool InRange(this float value, float min, float max) => value >= min && value <= max;
+        /// <summary>
+        /// Determine if a value is within a given range
+        /// </summary>
+        /// <returns></returns>
         public static bool InRange(this int value, int min, int max) => value >= min && value <= max;
     }
 
+    /// <summary>
+    /// A generic statemanger for a given enum
+    /// </summary>
+    /// <typeparam name="TEnum">An enum describing every valid state</typeparam>
     public class StateManager<TEnum> where TEnum : struct, Enum
     {
         private TEnum currentState;
 
+        /// <summary>
+        /// A collection of every valid enum value for this manager
+        /// </summary>
         private readonly HashSet<TEnum> enumValues = new HashSet<TEnum>((TEnum[])Enum.GetValues(typeof(TEnum)));
 
         public TEnum State => currentState;
@@ -734,6 +767,11 @@ namespace quiet
             currentState = startingState;
         }
 
+        /// <summary>
+        /// Determine if a given enum is valid for this manager
+        /// </summary>
+        /// <param name="state"></param>
+        /// <returns>True if state is a valid member of TEnum</returns>
         public bool IsValid(TEnum state) => enumValues.Contains(state);
 
         public void SwapState(TEnum newState)
@@ -750,6 +788,9 @@ namespace quiet
 
     #region Types
 
+    /// <summary>
+    /// A specialized version of float that can only be between 0 and 1, inclusive
+    /// </summary>
     [Serializable]
     public struct Float01
     {
@@ -777,8 +818,15 @@ namespace quiet
 
     #endregion
 
+    /// <summary>
+    /// Various methods to perform delayed actions
+    /// These objects should not be manually created, use the factories for ease of use.
+    /// </summary>
     namespace Timers
     {
+        /// <summary>
+        /// Perform an action once after a set interval
+        /// </summary>
         public class DoAfter : MonoBehaviour
         {
             public float Interval { get; set; }
@@ -812,6 +860,10 @@ namespace quiet
             }
         }
 
+        /// <summary>
+        /// Repeatedly do an action after a set interval
+        /// Can be configured to stop after a set amount of time
+        /// </summary>
         public class DoEvery : MonoBehaviour
         {
             public float Interval { get; set; }
